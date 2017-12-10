@@ -8,10 +8,5 @@
         {
             Expression = expression;
         }
-
-        public string ToGremlin()
-        {
-            return Expression.ToString();
-        }
     }
 }

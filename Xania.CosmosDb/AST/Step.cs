@@ -2,7 +2,6 @@
 {
     public interface IExpr
     {
-        string ToGremlin();
     }
 
     public interface ITraversal: IExpr
@@ -12,9 +11,5 @@
 
     public class Selector: IExpr
     {
-        public string ToGremlin()
-        {
-            throw new System.NotImplementedException();
-        }
     }
 }

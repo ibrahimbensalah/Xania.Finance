@@ -16,11 +16,5 @@ namespace Xania.CosmosDb.AST
             Source = source;
             Expr = expr;
         }
-
-        public string ToGremlin()
-        {
-            return $"{Source.ToGremlin()}.{Expr.ToGremlin()}";
-        }
-
     }
 }

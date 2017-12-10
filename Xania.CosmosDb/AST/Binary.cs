@@ -10,10 +10,5 @@
             PropertyName = propertyName;
             Right = right;
         }
-
-        public string ToGremlin()
-        {
-            return $"has('{PropertyName}', {Right.ToGremlin()})";
-        }
     }
 }

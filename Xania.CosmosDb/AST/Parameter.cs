@@ -10,10 +10,5 @@
             Name = name;
             Label = label;
         }
-
-        public string ToGremlin()
-        {
-            return $"select('{Name}')";
-        }
     }
 }

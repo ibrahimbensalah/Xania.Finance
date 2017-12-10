@@ -17,10 +17,5 @@ namespace Xania.CosmosDb.AST
         {
             return Parameters.Length == 1 && Parameters[0] == Body;
         }
-
-        public string ToGremlin()
-        {
-            return $"{Body.ToGremlin()}";
-        }
     }
 }

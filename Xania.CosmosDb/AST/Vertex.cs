@@ -10,19 +10,5 @@ namespace Xania.CosmosDb.AST
         {
             Label = label;
         }
-
-        public string ToGremlin()
-        {
-            return $"hasLabel('{Label}')";
-        }
-
-    }
-
-    public class ContextNode : IExpr
-    {
-        public string ToGremlin()
-        {
-            return "__";
-        }
     }
 }

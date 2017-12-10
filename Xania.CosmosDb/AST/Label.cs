@@ -10,11 +10,6 @@ namespace Xania.CosmosDb.AST
         {
             this.paramName = paramName;
         }
-
-        public string ToGremlin()
-        {
-            return paramName;
-        }
     }
 
     public class New: IExpr
@@ -24,11 +19,6 @@ namespace Xania.CosmosDb.AST
         public New(IExpr[] args)
         {
             _args = args;
-        }
-
-        public string ToGremlin()
-        {
-            throw new NotImplementedException();
         }
     }
 }

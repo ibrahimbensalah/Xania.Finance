@@ -13,13 +13,6 @@ namespace Xania.CosmosDb.AST
             Name = name;
         }
 
-        public string ToGremlin()
-        {
-            if (Target == null)
-                return $"out('{Name}')";
-            return $"{Target.ToGremlin()}.out('{Name}')";
-        }
-
         public IExpr Where(Lambda predicate)
         {
             throw new NotImplementedException();

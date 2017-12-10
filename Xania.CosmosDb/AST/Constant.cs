@@ -14,10 +14,5 @@ namespace Xania.CosmosDb.AST
         {
             this.Value = value;
         }
-
-        public string ToGremlin()
-        {
-            return $"'{Value}'";
-        }
     }
 }

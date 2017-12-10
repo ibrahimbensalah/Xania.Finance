@@ -14,10 +14,5 @@ namespace Xania.CosmosDb.AST
             Source = source;
             Predicate = predicate;
         }
-
-        public string ToGremlin()
-        {
-            return $"{Source.ToGremlin()}.where({Predicate.ToGremlin()})";
-        }
     }
 }
