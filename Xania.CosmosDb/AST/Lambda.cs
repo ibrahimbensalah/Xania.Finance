@@ -20,14 +20,7 @@ namespace Xania.CosmosDb.AST
 
         public string ToGremlin()
         {
-            if (Parameters.Length == 1)
-            {
-                var param = Parameters.Single();
-                var body = new ThisStepVisitor(param.Name).Convert(Body);
-                return $"{body.ToGremlin()}";
-            }
-            else
-                return $"{Body.ToGremlin()}";
+            return $"{Body.ToGremlin()}";
         }
     }
 }

@@ -196,6 +196,10 @@
     <Compile Include="CosmosQueryContext.cs" />
     <Compile Include="GraphQueryable.cs" />
     <Compile Include="GraphQueryProvider.cs" />
+    <Compile Include="Gremlin\Call.cs" />
+    <Compile Include="Gremlin\Helper.cs" />
+    <Compile Include="Gremlin\Select.cs" />
+    <Compile Include="Gremlin\Term.cs" />
     <Compile Include="MemberCall.cs" />
     <Compile Include="AST\Parameter.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

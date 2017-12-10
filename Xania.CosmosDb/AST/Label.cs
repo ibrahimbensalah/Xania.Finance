@@ -16,4 +16,19 @@ namespace Xania.CosmosDb.AST
             return paramName;
         }
     }
+
+    public class New: IExpr
+    {
+        private readonly IExpr[] _args;
+
+        public New(IExpr[] args)
+        {
+            _args = args;
+        }
+
+        public string ToGremlin()
+        {
+            throw new NotImplementedException();
+        }
+    }
 }

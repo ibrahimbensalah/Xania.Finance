@@ -1,24 +1,17 @@
 ﻿namespace Xania.CosmosDb.AST
 {
-    internal class Term
+    internal class Term: IExpr
     {
-        private readonly object _value;
+        public string Expression { get; }
 
-        public Term(object value)
+        public Term(string expression)
         {
-            _value = value;
+            Expression = expression;
         }
 
         public string ToGremlin()
         {
-            return _value?.ToString() ?? "null";
+            return Expression.ToString();
         }
-
-        public IExpr SelectMany(IExpr collectionExpr, IExpr step1)
-        {
-            throw new System.NotImplementedException();
-        }
-
-        public static readonly IExpr __ = new ContextNode();
     }
 }

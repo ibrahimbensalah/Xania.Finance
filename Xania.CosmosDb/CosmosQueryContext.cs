@@ -2,9 +2,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Runtime.CompilerServices;
 using Newtonsoft.Json;
 using Xania.CosmosDb.AST;
+using Xania.CosmosDb.Gremlin;
 using Xania.Reflection;
+using Where = Xania.CosmosDb.AST.Where;
 
 namespace Xania.CosmosDb
 {
@@ -13,7 +16,8 @@ namespace Xania.CosmosDb
         public static string ToGremlin(Expression expression)
         {
             var step = Evaluate(expression);
-            return $"g.V().{step.ToGremlin()}.{GetGremlinSelector(step)}";
+            return $"g.V().{Helper.ToGremlin(step)}.{GetGremlinSelector(step)}";
+            // return $"g.V().{step.ToGremlin()}.{GetGremlinSelector(step)}";
         }
 
         private static string GetGremlinSelector(IExpr expr)
@@ -84,7 +88,7 @@ namespace Xania.CosmosDb
                     }
                     else if (methodName.Equals("SelectMany"))
                     {
-                        stack.Push(methodCall.Arguments[0]);
+                        stack.Push(methodCall.Arguments[0]); 
                         stack.Push(methodCall.Arguments[1]);
                         stack.Push(methodCall.Arguments[2]);
                         yield return (3, SelectMany);
@@ -148,12 +152,30 @@ namespace Xania.CosmosDb
                     //    stack.Push(memberExpression.Expression);
                     //}
                 }
+                else if (item is NewExpression newExpression)
+                {
+                    if (!IsAnonymousType(newExpression.Type))
+                        throw new NotSupportedException($"GetOperators {newExpression}");
+
+                    foreach (var arg in newExpression.Arguments)
+                        stack.Push(arg);
+
+                    yield return (newExpression.Arguments.Count, args =>
+                    {
+                        return new AST.New(args);
+                    });
+                }
                 else
                 {
-                    throw new NotImplementedException();
+                    throw new NotImplementedException($"GetOperators {item}");
                     // yield return new Term($"[[{item.GetType()}]]");
                 }
             }
+        }
+
+        private static bool IsAnonymousType(Type type)
+        {
+            return type.CustomAttributes.Select(e => e.AttributeType).Contains(typeof(CompilerGeneratedAttribute));
         }
 
         private static IExpr Member(IExpr target, string name)

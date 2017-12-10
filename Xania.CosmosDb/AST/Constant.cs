@@ -8,16 +8,16 @@ namespace Xania.CosmosDb.AST
 {
     public class Constant : IExpr
     {
-        private object value;
+        public object Value { get; }
 
         public Constant(object value)
         {
-            this.value = value;
+            this.Value = value;
         }
 
         public string ToGremlin()
         {
-            return $"'{value}'";
+            return $"'{Value}'";
         }
     }
 }
