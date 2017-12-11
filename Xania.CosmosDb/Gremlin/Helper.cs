@@ -96,16 +96,6 @@ namespace Xania.CosmosDb.Gremlin
                 yield return expr;
         }
 
-        public static Call Relation(string name)
-        {
-            return new Call("out", Const(name));
-        }
-
-        public static Values Values(string name)
-        {
-            return new Values(name);
-        }
-
         public static (IGremlinExpr, IEnumerable<IGremlinExpr>) HeadTail(IGremlinExpr expr)
         {
             if (expr is Bind bind)
@@ -115,51 +105,6 @@ namespace Xania.CosmosDb.Gremlin
                 return (head, tail1.Concat(tail2));
             }
             return (expr, Enumerable.Empty<IGremlinExpr>());
-        }
-
-        public static IGremlinExpr As(string name)
-        {
-            return new Call("as", new Const(name));
-        }
-
-        public static IGremlinExpr Term(string value)
-        {
-            return new Term(value);
-        }
-
-        public static Const Const(object value)
-        {
-            return new Const(value);
-        }
-
-        public static Scope Scope(string methodName, Traversal traversal)
-        {
-            return new Scope(methodName, traversal);
-        }
-
-        public static Call Call(string methodName, IEnumerable<IGremlinExpr> expressions)
-        {
-            return new Call(methodName, expressions);
-        }
-
-        public static Bind Bind(IGremlinExpr expr1, IGremlinExpr expr2)
-        {
-            return new Bind(new [] {expr1, expr2});
-        }
-
-        public static Bind Bind(IGremlinExpr head, IEnumerable<IGremlinExpr> expressions)
-        {
-            if (head is Bind bind)
-                return new Bind(bind.Expressions.Concat(expressions).ToArray());
-            var list = new List<IGremlinExpr> {head};
-            foreach (var expr in expressions)
-                list.Add(expr);
-            return new Bind(list.ToArray());
-        }
-
-        public static Traversal Vertex(string label)
-        {
-            return new Traversal(new Call("hasLabel", Const(label)));
         }
     }
 

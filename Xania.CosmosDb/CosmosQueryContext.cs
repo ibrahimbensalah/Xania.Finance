@@ -12,8 +12,14 @@ namespace Xania.CosmosDb
     {
         public static string ToGremlin(Expression expression)
         {
-            return $"g.V().{Evaluate(expression)}";
+            var trav = Evaluate(expression);
+            return $"g.V().{trav}.{GetSelector(trav)}";
             // return $"g.V().{step.ToGremlin()}.{GetGremlinSelector(step)}";
+        }
+
+        private static string GetSelector(Traversal trav)
+        {
+            return $"union(identity(), outE())";
         }
 
         //private static string GetGremlinSelector(Traversal expr)
@@ -78,13 +84,13 @@ namespace Xania.CosmosDb
                         var lambda = GetSingleParameterLambda(methodCall, stack);
                         stack.Push(methodCall.Arguments[0]);
                         stack.Push(lambda);
-                        yield return (2, args => Where(args[0].Append(Helper.As(lambda.Parameters[0].Name)), args[1]));
+                        yield return (2, args => Where(args[0].Append(As(lambda.Parameters[0].Name)), args[1]));
                     }
                     else if (methodName.Equals("SelectMany"))
                     {
-                        stack.Push(methodCall.Arguments[0]);
-                        stack.Push(methodCall.Arguments[1]);
-                        stack.Push(methodCall.Arguments[2]);
+                        foreach(var arg in methodCall.Arguments)
+                            stack.Push(arg);
+
                         yield return (3, SelectMany);
                     }
                     else
@@ -96,10 +102,9 @@ namespace Xania.CosmosDb
                 }
                 else if (item is LambdaExpression lambda)
                 {
-                    foreach (var p in lambda.Parameters)
-                        stack.Push(p);
+                    var parameters = lambda.Parameters.Select(e => e.Name).ToArray();
                     stack.Push(lambda.Body);
-                    yield return (lambda.Parameters.Count + 1, Lambda);
+                    yield return (1, args => new Traversal(args[0].Steps, parameters));
                 }
                 else if (item is BinaryExpression binaryExpression)
                 {
@@ -121,11 +126,11 @@ namespace Xania.CosmosDb
                         if (queryableType != null)
                         {
                             var itemType = queryableType.GenericTypeArguments[0];
-                            yield return (0, _ => Helper.Vertex(itemType.Name.ToCamelCase()));
+                            yield return (0, _ => Vertex(itemType.Name.ToCamelCase()));
                         }
                         else if (valueType.IsPrimitive || value is string)
                         {
-                            yield return (0, _ => Helper.Const(constantExpression.Value).ToTraversal());
+                            yield return (0, _ => Const(constantExpression.Value).ToTraversal());
                         }
                         else
                         {
@@ -146,7 +151,7 @@ namespace Xania.CosmosDb
 
 
                         yield return (1, args =>
-                            isPrimitive ? args[0].Append(Helper.Values(memberName)) : args[0].Append(Helper.Relation(memberName)));
+                            isPrimitive ? args[0].Append(Values(memberName)) : args[0].Append(Relation(memberName)));
                     }
 
                     //if (!(memberExpression.Expression is ParameterExpression))
@@ -198,7 +203,14 @@ namespace Xania.CosmosDb
             var collection = args[1];
             var selector = args[2];
 
-            throw new NotImplementedException("SelectMany");
+            var sourceParam = args[1].Parameters[0];
+            var collectionParam = args[2].Parameters[1];
+
+            return source
+                .Append(As(sourceParam))
+                .Concat(collection)
+                .Append(As(collectionParam))
+                .Concat(selector);
 
             //var sourceParam = selector.Parameters[0];
             //var collectionParam = selector.Parameters[1];
@@ -226,7 +238,7 @@ namespace Xania.CosmosDb
 
         private static Traversal Where(Traversal source, Traversal predicate)
         {
-            return source.Append(Helper.Scope("where", predicate));
+            return source.Append(Scope("where", predicate));
             //var parameter = predicate.Parameters[0];
             // var predicate = ToGremlin(where.Predicate);
             //var (head, tail) = HeadTail(predicate);
@@ -279,20 +291,77 @@ namespace Xania.CosmosDb
                 throw new NotSupportedException("Where second argument not supported.");
             }
         }
+
+        public static Call Relation(string name)
+        {
+            return new Call("out", Const(name));
+        }
+
+        public static Values Values(string name)
+        {
+            return new Values(name);
+        }
+
+        public static IGremlinExpr As(string name)
+        {
+            return new Call("as", new Const(name));
+        }
+
+        public static IGremlinExpr Term(string value)
+        {
+            return new Term(value);
+        }
+
+        public static Const Const(object value)
+        {
+            return new Const(value);
+        }
+
+        public static Scope Scope(string methodName, Traversal traversal)
+        {
+            return new Scope(methodName, traversal);
+        }
+
+        public static Call Call(string methodName, IEnumerable<IGremlinExpr> expressions)
+        {
+            return new Call(methodName, expressions);
+        }
+
+        public static Bind Bind(IGremlinExpr expr1, IGremlinExpr expr2)
+        {
+            return new Bind(new[] { expr1, expr2 });
+        }
+
+        public static Bind Bind(IGremlinExpr head, IEnumerable<IGremlinExpr> expressions)
+        {
+            if (head is Bind bind)
+                return new Bind(bind.Expressions.Concat(expressions).ToArray());
+            var list = new List<IGremlinExpr> { head };
+            foreach (var expr in expressions)
+                list.Add(expr);
+            return new Bind(list.ToArray());
+        }
+
+        public static Traversal Vertex(string label)
+        {
+            return new Traversal(new Call("hasLabel", Const(label)));
+        }
     }
 
     public class Traversal
     {
         public IEnumerable<IGremlinExpr> Steps { get; }
+        public string[] Parameters { get; }
 
         public Traversal(IGremlinExpr step)
             : this(new[] { step })
         {
         }
 
-        public Traversal(IEnumerable<IGremlinExpr> steps)
+        public Traversal(IEnumerable<IGremlinExpr> steps, params string[] parameters)
         {
             Steps = steps;
+            Parameters = parameters;
         }
 
         public override string ToString()
@@ -305,6 +374,11 @@ namespace Xania.CosmosDb
         public Traversal Append(IGremlinExpr expr)
         {
             return new Traversal(Steps.Append(expr));
+        }
+
+        public Traversal Concat(Traversal other)
+        {
+            return new Traversal(Steps.Concat(other.Steps));
         }
     }
 }
