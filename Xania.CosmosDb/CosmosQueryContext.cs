@@ -78,7 +78,7 @@ namespace Xania.CosmosDb
                         var lambda = GetSingleParameterLambda(methodCall, stack);
                         stack.Push(methodCall.Arguments[0]);
                         stack.Push(lambda);
-                        yield return (2, Where);
+                        yield return (2, args => Where(args[0].Append(Helper.As(lambda.Parameters[0].Name)), args[1]));
                     }
                     else if (methodName.Equals("SelectMany"))
                     {
@@ -139,9 +139,14 @@ namespace Xania.CosmosDb
                         yield return (0, args => null);
                     else
                     {
+                        var isPrimitive = Graph.IsPrimitive(memberExpression.Type);
+
                         var memberName = memberExpression.Member.Name.ToCamelCase();
                         stack.Push(memberExpression.Expression);
-                        yield return (1, args => Member(args[0], memberName));
+
+
+                        yield return (1, args =>
+                            isPrimitive ? args[0].Append(Helper.Values(memberName)) : args[0].Append(Helper.Relation(memberName)));
                     }
 
                     //if (!(memberExpression.Expression is ParameterExpression))
@@ -171,11 +176,6 @@ namespace Xania.CosmosDb
         private static bool IsAnonymousType(Type type)
         {
             return type.CustomAttributes.Select(e => e.AttributeType).Contains(typeof(CompilerGeneratedAttribute));
-        }
-
-        private static Traversal Member(Traversal target, string name)
-        {
-            return target.Append(Helper.Member(name));
         }
 
         private static Traversal Parameter(ParameterExpression parameter)
@@ -224,10 +224,8 @@ namespace Xania.CosmosDb
             // return new SelectMany(args[0], (Lambda)args[1], (Lambda)args[2]);
         }
 
-        private static Traversal Where(Traversal[] args)
+        private static Traversal Where(Traversal source, Traversal predicate)
         {
-            var source = args[0];
-            var predicate = args[1];
             return source.Append(Helper.Scope("where", predicate));
             //var parameter = predicate.Parameters[0];
             // var predicate = ToGremlin(where.Predicate);
@@ -247,6 +245,9 @@ namespace Xania.CosmosDb
             // return Call("has", Const(equal.PropertyName), ToGremlin(equal.Right));
             if (oper == ExpressionType.Equal)
             {
+                if (left.Steps.Last() is Values values)
+                    return new Traversal(left.Steps.Take(left.Steps.Count() - 1)).Append(new Call("has", right.Steps.Prepend(new Const(values.Name))));
+
                 return left.Append(new Call("has", right.Steps));
             }
             throw new NotImplementedException();

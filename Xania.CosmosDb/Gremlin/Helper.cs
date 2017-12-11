@@ -12,10 +12,10 @@ namespace Xania.CosmosDb.Gremlin
             return new Traversal(expr);
         }
 
-        public static IEnumerable<T> Append<T>(this IEnumerable<T> source, T item)
-        {
-            return new AppendEnumerable<T>(source, item);
-        }
+        //public static IEnumerable<T> Prepend<T>(this T item, IEnumerable<T> source)
+        //{
+        //    return new PrependEnumerable<T>(source, item);
+        //}
 
         /*
         public static IGremlinExpr ToGremlin(IExpr expression)
@@ -27,13 +27,13 @@ namespace Xania.CosmosDb.Gremlin
                 var parameter = where.Predicate.Parameters[0];
                 var predicate = ToGremlin(where.Predicate);
                 var source = ToGremlin(where.Source);
-                //var (head, tail) = HeadTail(predicate);
-                //if (head is Select select && select.Label.Equals(parameter.Name))
-                //{
-                //    if (tail == null)
-                //        return source;
-                //    return Bind(source, tail);
-                //}
+                var (head, tail) = HeadTail(predicate);
+                if (head is Select select && select.Label.Equals(parameter.Name))
+                {
+                    if (tail == null)
+                        return source;
+                    return Bind(source, tail);
+                }
                 return new Bind(Unfold(source).Concat(new []{ As(parameter.Name), Call("where", predicate) }).ToArray());
             }
             if (expression is AST.Vertex vertex)
@@ -96,9 +96,14 @@ namespace Xania.CosmosDb.Gremlin
                 yield return expr;
         }
 
-        public static Call Member(string name)
+        public static Call Relation(string name)
         {
             return new Call("out", Const(name));
+        }
+
+        public static Values Values(string name)
+        {
+            return new Values(name);
         }
 
         public static (IGremlinExpr, IEnumerable<IGremlinExpr>) HeadTail(IGremlinExpr expr)
@@ -174,6 +179,29 @@ namespace Xania.CosmosDb.Gremlin
             foreach (var i in _source)
                 yield return i;
             yield return _item;
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
+    }
+    public class PrependEnumerable<T>: IEnumerable<T>
+    {
+        private readonly IEnumerable<T> _source;
+        private readonly T _item;
+
+        public PrependEnumerable(IEnumerable<T> source, T item)
+        {
+            _source = source;
+            _item = item;
+        }
+
+        public IEnumerator<T> GetEnumerator()
+        {
+            yield return _item;
+            foreach (var i in _source)
+                yield return i;
         }
 
         IEnumerator IEnumerable.GetEnumerator()

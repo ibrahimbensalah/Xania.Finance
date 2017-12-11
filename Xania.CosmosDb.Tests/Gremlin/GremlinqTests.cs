@@ -79,7 +79,7 @@ namespace Xania.CosmosDb.Tests.Gremlin
             // var g = "g.V().hasLabel('person').as('p').out('friends').as('f').union(select('f'), select('f').outE())";
             GremlinSetup.Client
                 // .ExecuteGremlinAsync("g.V().hasLabel('person').where(has('firstName', 'Ibrahim')).union(identity(), outE())")
-                .ExecuteGremlinAsync("g.V().hasLabel('person').as('p').where(select('p').has('firstName', 'Ibrahim'))")
+                .ExecuteGremlinAsync(@"g.V().hasLabel('person').as('p').where(select('p').values('firstName').eq(value('Ibrahim')))")
                 .Wait();
         }
 
