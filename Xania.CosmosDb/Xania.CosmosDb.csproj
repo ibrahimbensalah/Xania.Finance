@@ -182,7 +182,6 @@
     <Compile Include="AST\Label.cs" />
     <Compile Include="AST\Lambda.cs" />
     <Compile Include="AST\MemberCall.cs" />
-    <Compile Include="AST\Member.cs" />
     <Compile Include="AST\SelectMany.cs" />
     <Compile Include="AST\Term.cs" />
     <Compile Include="AST\Step.cs" />

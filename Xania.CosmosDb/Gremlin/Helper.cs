@@ -1,15 +1,23 @@
-﻿using System;
+﻿using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Newtonsoft.Json;
-using Xania.CosmosDb.AST;
 
 namespace Xania.CosmosDb.Gremlin
 {
     public static class Helper
     {
+        public static Traversal ToTraversal(this IGremlinExpr expr)
+        {
+            return new Traversal(expr);
+        }
+
+        public static IEnumerable<T> Append<T>(this IEnumerable<T> source, T item)
+        {
+            return new AppendEnumerable<T>(source, item);
+        }
+
+        /*
         public static IGremlinExpr ToGremlin(IExpr expression)
         {
             if (expression == null)
@@ -70,26 +78,30 @@ namespace Xania.CosmosDb.Gremlin
             if (expression is AST.Term term)
                 return new Term(term.Expression);
 
+            if (expression is New)
+                return null;
+
             throw new NotImplementedException($"ToGremlin {expression}");
         }
+        */
 
-        private static IEnumerable<IGremlinExpr> Unfold(IGremlinExpr expr)
+        public static IEnumerable<IGremlinExpr> Unfold(IGremlinExpr expr)
         {
             if (expr is Bind bind)
                 foreach (var child in bind.Expressions.SelectMany(Unfold))
                 {
                     yield return child;
                 }
-            else
+            else if (expr != null)
                 yield return expr;
         }
 
-        private static IGremlinExpr Member(IGremlinExpr target, string name)
+        public static Call Member(string name)
         {
-            return Bind(target, Call("out", Const(name)));
+            return new Call("out", Const(name));
         }
 
-        private static (IGremlinExpr, IEnumerable<IGremlinExpr>) HeadTail(IGremlinExpr expr)
+        public static (IGremlinExpr, IEnumerable<IGremlinExpr>) HeadTail(IGremlinExpr expr)
         {
             if (expr is Bind bind)
             {
@@ -100,22 +112,27 @@ namespace Xania.CosmosDb.Gremlin
             return (expr, Enumerable.Empty<IGremlinExpr>());
         }
 
-        private static IGremlinExpr As(string name)
+        public static IGremlinExpr As(string name)
         {
-            return Call("as", Const(name));
+            return new Call("as", new Const(name));
         }
 
-        private static IGremlinExpr Term(string value)
+        public static IGremlinExpr Term(string value)
         {
             return new Term(value);
         }
 
-        private static IGremlinExpr Const(object value)
+        public static Const Const(object value)
         {
             return new Const(value);
         }
 
-        public static Call Call(string methodName, params IGremlinExpr[] expressions)
+        public static Scope Scope(string methodName, Traversal traversal)
+        {
+            return new Scope(methodName, traversal);
+        }
+
+        public static Call Call(string methodName, IEnumerable<IGremlinExpr> expressions)
         {
             return new Call(methodName, expressions);
         }
@@ -134,9 +151,38 @@ namespace Xania.CosmosDb.Gremlin
                 list.Add(expr);
             return new Bind(list.ToArray());
         }
+
+        public static Traversal Vertex(string label)
+        {
+            return new Traversal(new Call("hasLabel", Const(label)));
+        }
     }
 
-    internal class Const : IGremlinExpr
+    public class AppendEnumerable<T>: IEnumerable<T>
+    {
+        private readonly IEnumerable<T> _source;
+        private readonly T _item;
+
+        public AppendEnumerable(IEnumerable<T> source, T item)
+        {
+            _source = source;
+            _item = item;
+        }
+
+        public IEnumerator<T> GetEnumerator()
+        {
+            foreach (var i in _source)
+                yield return i;
+            yield return _item;
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
+    }
+
+    public class Const : IGremlinExpr
     {
         private readonly object _value;
 
