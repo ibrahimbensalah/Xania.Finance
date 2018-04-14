@@ -5,11 +5,13 @@ namespace Xania.Graphs
 {
     public class Out : IStep
     {
+        public bool HasMany { get; }
         public string EdgeLabel { get; }
         public Type Type { get; }
 
-        public Out(string edgeLabel, Type type)
+        public Out(string edgeLabel, Type type, bool hasMany)
         {
+            HasMany = hasMany;
             EdgeLabel = edgeLabel;
             Type = type;
         }

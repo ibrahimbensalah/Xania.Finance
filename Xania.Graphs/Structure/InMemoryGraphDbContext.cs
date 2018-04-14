@@ -206,12 +206,12 @@ namespace Xania.Graphs.Structure
                 {
                     // var x = g.Execute(kvp.Value, new(string name, IGraphQuery result)[0]);
                     var expr = GetExpression(param, kvp.Value, new(string name, Expression result)[0]);
-                    if (!kvp.Value.HasMany() && expr.Type.IsEnumerable())
-                    {
-                        var elementType = expr.Type.GetItemType();
-                        var firstMethod = EnumerableHelper.FirstOrDefault(elementType);
-                        expr = Expression.Call(firstMethod, expr);
-                    }
+                    //if (!kvp.Value.HasMany())
+                    //{
+                    //    var elementType = expr.Type;// .GetItemType();
+                    //    var firstMethod = EnumerableHelper.FirstOrDefault(elementType);
+                    //    expr = Expression.Call(firstMethod, expr);
+                    //}
 
                     return Expression.ElementInit(
                         addMethod,

@@ -23,7 +23,7 @@ namespace Xania.Graphs
         public bool HasMany()
         {
             foreach (var step in Steps)
-                if (step is Out o && o.Type.IsEnumerable())
+                if (step is Out o && o.HasMany)
                     return true;
             return false;
         }
