@@ -280,8 +280,19 @@ namespace Xania.Graphs.Structure
                 if (step is Has has)
                 {
                     Expression<Func<Vertex, bool>> p = GetPropertyPredicate(has.Property, has.CompareStep);
-                    var whereMethod = QueryableHelper.Where_TSource_1<Vertex>();
-                    return (Expression.Call(whereMethod, x, p), m);
+                    if (x.Type == typeof(Vertex))
+                    {
+                        var notNullX = Expression.NotEqual(p.Parameters[0], Expression.Constant(null));
+                        var andX = Expression.And(notNullX, p.Body);
+
+                        return (andX, m);
+                        // return (ReplaceVisitor.VisitAndConvert(mx.Body, mx.Parameters[0], x), m);
+                    }
+                    else
+                    {
+                        var whereMethod = QueryableHelper.Where_TSource_1<Vertex>();
+                        return (Expression.Call(whereMethod, x, p), m);
+                    }
                 }
 
                 if (step is Select select)
@@ -292,6 +303,13 @@ namespace Xania.Graphs.Structure
                 if (step is Project project)
                 {
                     return (GetProjectionExpression(x, project), m);
+                }
+
+                if (step is First)
+                {
+                    var elementType = x.Type.GetItemType();
+                    var firstMethod = EnumerableHelper.FirstOrDefault(elementType);
+                    return (Expression.Call(firstMethod, x), m);
                 }
 
                 throw new NotImplementedException(step.GetType().ToString());

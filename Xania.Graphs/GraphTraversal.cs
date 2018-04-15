@@ -20,14 +20,6 @@ namespace Xania.Graphs
             Steps = steps;
         }
 
-        public bool HasMany()
-        {
-            foreach (var step in Steps)
-                if (step is Out o && o.HasMany)
-                    return true;
-            return false;
-        }
-
         public override string ToString()
         {
             return ToGremlinSelector().Join(".");
@@ -86,6 +78,11 @@ namespace Xania.Graphs
                 return new GraphTraversal(steps);
             else
                 return new GraphTraversal(new Context(traversal.StepType));
+        }
+
+        public GraphTraversal FirstOrDefault()
+        {
+            return new GraphTraversal(Steps.Append(new First(StepType)));
         }
     }
 }

@@ -186,9 +186,13 @@ namespace Xania.Graphs.Linq
 
                         yield return (1, args =>
                         {
-                            var g = (isValues)
-                                ? args[0].Append(Values(memberName, elementType))
-                                : args[0].Append(Out(memberName, elementType, isEnumerable));
+                            if (isValues)
+                                return args[0].Append(Values(memberName, elementType));
+
+                            var g = args[0].Append(Out(memberName, elementType));
+
+                            if (!isEnumerable)
+                                return g.FirstOrDefault();
 
                             return g;
                         });
@@ -365,9 +369,9 @@ namespace Xania.Graphs.Linq
             }
         }
 
-        public static Out Out(string edgeLabel, Type type, bool isEnumerable)
+        public static Out Out(string edgeLabel, Type type)
         {
-            return new Out(edgeLabel, type, isEnumerable);
+            return new Out(edgeLabel, type);
         }
 
         public static Values Values(string name, Type type)

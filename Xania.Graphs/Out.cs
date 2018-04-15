@@ -5,13 +5,11 @@ namespace Xania.Graphs
 {
     public class Out : IStep
     {
-        public bool HasMany { get; }
         public string EdgeLabel { get; }
         public Type Type { get; }
 
-        public Out(string edgeLabel, Type type, bool hasMany)
+        public Out(string edgeLabel, Type type)
         {
-            HasMany = hasMany;
             EdgeLabel = edgeLabel;
             Type = type;
         }
@@ -26,8 +24,18 @@ namespace Xania.Graphs
                 var elementType = Type.GetItemType();
                 return $"out('{EdgeLabel}').hasLabel('{elementType.Name.ToCamelCase()}')";
             }
-            else
-                return $"out('{EdgeLabel}').hasLabel('{Type.Name.ToCamelCase()}')";
+
+            return $"out('{EdgeLabel}').hasLabel('{Type.Name.ToCamelCase()}')";
+        }
+    }
+
+    public class First : IStep
+    {
+        public Type Type { get; }
+
+        public First(Type type)
+        {
+            Type = type;
         }
     }
 }
