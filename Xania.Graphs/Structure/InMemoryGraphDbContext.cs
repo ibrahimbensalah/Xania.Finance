@@ -114,19 +114,20 @@ namespace Xania.Graphs.Structure
 
         public object Execute(Type elementType)
         {
-            var graphsonExpr = GetGraphSONExpression(Graph.Edges, SourceExpression);
+            // var graphsonExpr = GetGraphSONExpression(Graph.Edges, SourceExpression);
 
-            var f = Expression.Lambda(graphsonExpr).Compile();
-
+            var f = Expression.Lambda(SourceExpression).Compile();
             var result = f.DynamicInvoke();
 
-            if (result is IEnumerable<GraphSON> enumerable)
+            var mapper = new Mapper(new VertexMappingResolver(Graph));
+
+            if (result is IEnumerable<Vertex> enumerable)
             {
                 var list = new List<object>();
 
                 foreach (var entry in enumerable)
                 {
-                    var entity = entry.MapTo(elementType);
+                    var entity = mapper.MapTo(entry, elementType);
                     // var entity = elementType.CreateInstance(entry);
                     list.Add(entity);
                 }
@@ -135,34 +136,27 @@ namespace Xania.Graphs.Structure
             }
             else
             {
-                return result.MapTo(elementType);
+                return mapper.MapTo(result, elementType);
             }
 
             //var f = Expression.Lambda<Func<IQueryable<Vertex>>>(Expression).Compile();
             //return f().Select(v => v.ToClrType(elementType, _graph));
         }
 
-        public static Expression GetGraphSONExpression(IQueryable<Edge> edges, Expression sourceExpression)
-        {
-            Expression<Func<Vertex, GraphSON>> propertiesExpr =
-                v => new GraphSON
-                {
-                    Id = v.Id,
-                    Properties =
-                        v.Properties.ToDictionary(p => p.Name, p => p.Value, StringComparer.InvariantCultureIgnoreCase),
-                    Relations = edges.Where(edge => edge.OutV == v.Id)
-                };
+        //public static Expression GetGraphSONExpression(IQueryable<Edge> edges, Expression sourceExpression)
+        //{
+        //    Expression<Func<Vertex, GraphSON>> propertiesExpr =
+        //        v => new GraphSON
+        //        {
+        //            Id = v.Id,
+        //            Properties =
+        //                v.Properties.ToDictionary(p => p.Name, p => p.Value, StringComparer.InvariantCultureIgnoreCase),
+        //            Relations = edges.Where(edge => edge.OutV == v.Id)
+        //        };
 
-
-            if (sourceExpression.Type == typeof(Vertex))
-            {
-                return ReplaceVisitor.VisitAndConvert(propertiesExpr.Body, propertiesExpr.Parameters[0],
-                    sourceExpression);
-            }
-
-            var selectMethod = QueryableHelper.Select_TSource_2(typeof(Vertex), typeof(GraphSON));
-            return Expression.Call(selectMethod, sourceExpression, propertiesExpr);
-        }
+        //    var selectMethod = QueryableHelper.Select_TSource_2(typeof(Vertex), typeof(GraphSON));
+        //    return Expression.Call(selectMethod, sourceExpression, propertiesExpr);
+        //}
 
         public static Expression GetVertextExpression(Type elementType)
         {
@@ -220,6 +214,7 @@ namespace Xania.Graphs.Structure
                 {
                     // var x = g.Execute(kvp.Value, new(string name, IGraphQuery result)[0]);
                     var expr = GetExpression(param, kvp.Value, new(string name, Expression result)[0]);
+
                     if (TakeFirst(kvp.Value))
                     {
                         var elementType = expr.Type.GetItemType();
@@ -639,9 +634,12 @@ namespace Xania.Graphs.Structure
             var list = new List<object>();
             var result = func.DynamicInvoke();
             Console.WriteLine(JsonConvert.SerializeObject(result, Formatting.Indented));
+
+            var mapper = new Mapper(new VertexMappingResolver(_graph));
+
             foreach (var o in (IEnumerable<object>) result)
             {
-                list.Add(o.MapTo(elementType));
+                list.Add(mapper.MapTo(o, elementType));
             }
 
             return list;
@@ -675,7 +673,6 @@ namespace Xania.Graphs.Structure
 
         public Expression SourceExpression { get; }
     }
-
 
     public interface IGraphQuery
     {
