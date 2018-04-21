@@ -176,7 +176,7 @@ namespace Xania.Graphs.Linq
                         yield return (0, args => new GraphTraversal(new Select(memberExpression.Member.Name, memberExpression.Type)));
                     else
                     {
-                        var isEnumerable = memberExpression.Type.IsEnumerable();
+                        var many = memberExpression.Type.IsEnumerable();
 
                         var elementType = GetElementType(memberExpression.Type);
                         var isValues = elementType.IsPrimitive() || elementType.IsComplexType();
@@ -189,12 +189,7 @@ namespace Xania.Graphs.Linq
                             if (isValues)
                                 return args[0].Append(Values(memberName, elementType));
 
-                            var g = args[0].Append(Out(memberName, elementType));
-
-                            if (!isEnumerable)
-                                return g.FirstOrDefault();
-
-                            return g;
+                            return args[0].Append(Out(memberName, elementType, many));
                         });
                     }
                 }
@@ -301,8 +296,7 @@ namespace Xania.Graphs.Linq
                 return source
                     .Bind(collection)
                     .Bind(selector);
-            }
-            );
+            });
         }
 
         private static GraphTraversal Parameter(ParameterExpression parameter)
@@ -369,9 +363,9 @@ namespace Xania.Graphs.Linq
             }
         }
 
-        public static Out Out(string edgeLabel, Type type)
+        public static Out Out(string edgeLabel, Type type, bool many)
         {
-            return new Out(edgeLabel, type);
+            return new Out(edgeLabel, type, many);
         }
 
         public static Values Values(string name, Type type)

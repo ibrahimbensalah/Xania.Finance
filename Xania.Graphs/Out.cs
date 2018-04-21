@@ -7,11 +7,13 @@ namespace Xania.Graphs
     {
         public string EdgeLabel { get; }
         public Type Type { get; }
+        public bool Many { get; }
 
-        public Out(string edgeLabel, Type type)
+        public Out(string edgeLabel, Type type, bool many)
         {
             EdgeLabel = edgeLabel;
             Type = type;
+            Many = many;
         }
 
         public override string ToString()
@@ -26,16 +28,6 @@ namespace Xania.Graphs
             }
 
             return $"out('{EdgeLabel}').hasLabel('{Type.Name.ToCamelCase()}')";
-        }
-    }
-
-    public class First : IStep
-    {
-        public Type Type { get; }
-
-        public First(Type type)
-        {
-            Type = type;
         }
     }
 }

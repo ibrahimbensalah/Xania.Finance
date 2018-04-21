@@ -79,10 +79,5 @@ namespace Xania.Graphs
             else
                 return new GraphTraversal(new Context(traversal.StepType));
         }
-
-        public GraphTraversal FirstOrDefault()
-        {
-            return new GraphTraversal(Steps.Append(new First(StepType)));
-        }
     }
 }

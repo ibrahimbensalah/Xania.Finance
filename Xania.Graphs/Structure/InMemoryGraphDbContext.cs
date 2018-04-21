@@ -117,18 +117,26 @@ namespace Xania.Graphs.Structure
             var graphsonExpr = GetGraphSONExpression(Graph.Edges, SourceExpression);
 
             var f = Expression.Lambda(graphsonExpr).Compile();
-            var result = (IEnumerable<GraphSON>) f.DynamicInvoke();
 
-            var list = new List<object>();
+            var result = f.DynamicInvoke();
 
-            foreach (var entry in result)
+            if (result is IEnumerable<GraphSON> enumerable)
             {
-                var entity = entry.MapTo(elementType);
-                // var entity = elementType.CreateInstance(entry);
-                list.Add(entity);
-            }
+                var list = new List<object>();
 
-            return list;
+                foreach (var entry in enumerable)
+                {
+                    var entity = entry.MapTo(elementType);
+                    // var entity = elementType.CreateInstance(entry);
+                    list.Add(entity);
+                }
+
+                return list;
+            }
+            else
+            {
+                return result.MapTo(elementType);
+            }
 
             //var f = Expression.Lambda<Func<IQueryable<Vertex>>>(Expression).Compile();
             //return f().Select(v => v.ToClrType(elementType, _graph));
@@ -145,9 +153,15 @@ namespace Xania.Graphs.Structure
                     Relations = edges.Where(edge => edge.OutV == v.Id)
                 };
 
+
+            if (sourceExpression.Type == typeof(Vertex))
+            {
+                return ReplaceVisitor.VisitAndConvert(propertiesExpr.Body, propertiesExpr.Parameters[0],
+                    sourceExpression);
+            }
+
             var selectMethod = QueryableHelper.Select_TSource_2(typeof(Vertex), typeof(GraphSON));
-            var graphsonExpr = Expression.Call(selectMethod, sourceExpression, propertiesExpr);
-            return graphsonExpr;
+            return Expression.Call(selectMethod, sourceExpression, propertiesExpr);
         }
 
         public static Expression GetVertextExpression(Type elementType)
@@ -160,7 +174,7 @@ namespace Xania.Graphs.Structure
             if (step is V vertex)
             {
                 return new FilterStep<Vertex>(Graph,
-                        x => x.Label.Equals(vertex.Label, StringComparison.InvariantCultureIgnoreCase))
+                        x => x != null && x.Label.Equals(vertex.Label, StringComparison.InvariantCultureIgnoreCase))
                     .Query(SourceExpression);
             }
 
@@ -206,12 +220,12 @@ namespace Xania.Graphs.Structure
                 {
                     // var x = g.Execute(kvp.Value, new(string name, IGraphQuery result)[0]);
                     var expr = GetExpression(param, kvp.Value, new(string name, Expression result)[0]);
-                    //if (!kvp.Value.HasMany())
-                    //{
-                    //    var elementType = expr.Type;// .GetItemType();
-                    //    var firstMethod = EnumerableHelper.FirstOrDefault(elementType);
-                    //    expr = Expression.Call(firstMethod, expr);
-                    //}
+                    if (TakeFirst(kvp.Value))
+                    {
+                        var elementType = expr.Type.GetItemType();
+                        var firstMethod = EnumerableHelper.FirstOrDefault(elementType);
+                        expr = Expression.Call(firstMethod, expr);
+                    }
 
                     return Expression.ElementInit(
                         addMethod,
@@ -224,6 +238,18 @@ namespace Xania.Graphs.Structure
                 Expression.New(typeof(Dictionary<string, object>)),
                 bindings
             );
+        }
+
+        private bool TakeFirst(GraphTraversal g)
+        {
+            var (needOne, outMany) = g.Steps.Aggregate((false, false), (b, s) =>
+                {
+                    var (many, result) = b;
+                    return (s is Out o && o.Many || many, s is Out || result);
+                }
+            );
+
+            return outMany && !needOne;
         }
 
         private Expression<Func<Vertex, bool>> GetVertexPredicate(GraphTraversal traversal,
@@ -282,8 +308,8 @@ namespace Xania.Graphs.Structure
                     Expression<Func<Vertex, bool>> p = GetPropertyPredicate(has.Property, has.CompareStep);
                     if (x.Type == typeof(Vertex))
                     {
-                        var notNullX = Expression.NotEqual(p.Parameters[0], Expression.Constant(null));
-                        var andX = Expression.And(notNullX, p.Body);
+                        var notNullX = Expression.NotEqual(x, Expression.Constant(null));
+                        var andX = Expression.And(notNullX, ReplaceVisitor.VisitAndConvert(p.Body, p.Parameters[0], x));
 
                         return (andX, m);
                         // return (ReplaceVisitor.VisitAndConvert(mx.Body, mx.Parameters[0], x), m);
@@ -305,12 +331,12 @@ namespace Xania.Graphs.Structure
                     return (GetProjectionExpression(x, project), m);
                 }
 
-                if (step is First)
-                {
-                    var elementType = x.Type.GetItemType();
-                    var firstMethod = EnumerableHelper.FirstOrDefault(elementType);
-                    return (Expression.Call(firstMethod, x), m);
-                }
+                //if (step is First)
+                //{
+                //    var elementType = x.Type.GetItemType();
+                //    var firstMethod = EnumerableHelper.FirstOrDefault(elementType);
+                //    return (Expression.Call(firstMethod, x), m);
+                //}
 
                 throw new NotImplementedException(step.GetType().ToString());
             });
@@ -324,9 +350,9 @@ namespace Xania.Graphs.Structure
                 if (eq.Value is Const cons)
                 {
                     if (propertyName.Equals("id", StringComparison.InvariantCultureIgnoreCase))
-                        return v => v.Id.Equals(cons.Value);
+                        return v => v != null && v.Id.Equals(cons.Value);
                     else
-                        return v => v.Properties.Any(p =>
+                        return v => v != null && v.Properties.Any(p =>
                             p.Name.Equals(propertyName, StringComparison.InvariantCultureIgnoreCase) &&
                             p.Value.Equals(cons.Value));
                 }
@@ -625,17 +651,26 @@ namespace Xania.Graphs.Structure
         {
             if (step is Out o)
             {
-                var property = TypeDescriptor.GetProperties(sourceType)
-                    .OfType<PropertyDescriptor>()
-                    .First(p => p.Name.Equals(o.EdgeLabel, StringComparison.InvariantCultureIgnoreCase));
-
-                var param = Expression.Parameter(sourceType);
-                var propertyExpr = Expression.Property(param, property.Name);
-
-                return new MemberStep(_graph, Expression.Lambda(propertyExpr, param)).Query(SourceExpression);
+                return SelectProperty(sourceType, o.EdgeLabel);
+            }
+            if (step is Values val)
+            {
+                return SelectProperty(sourceType, val.Name);
             }
 
             throw new NotSupportedException($"{step.GetType()}");
+        }
+
+        private IGraphQuery SelectProperty(Type sourceType, string propertyName)
+        {
+            var property = TypeDescriptor.GetProperties(sourceType)
+                .OfType<PropertyDescriptor>()
+                .First(p => p.Name.Equals(propertyName, StringComparison.InvariantCultureIgnoreCase));
+
+            var param = Expression.Parameter(sourceType);
+            var propertyExpr = Expression.Property(param, property.Name);
+
+            return new MemberStep(_graph, Expression.Lambda(propertyExpr, param)).Query(SourceExpression);
         }
 
         public Expression SourceExpression { get; }
